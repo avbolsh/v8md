@@ -25,6 +25,10 @@ pub enum MdType {
     ChartOfCharacteristicTypesRef(String),
     #[serde(rename = "InformationRegisterRef")]
     InformationRegisterRef(String),
+    #[serde(rename = "AccumulationRegisterRef")]
+    AccumulationRegisterRef(String),
+    #[serde(rename = "ExchangePlanRef")]
+    ExchangePlanRef(String),
     #[serde(rename = "Composite")]
     Composite(Vec<MdType>),
 }
@@ -49,6 +53,82 @@ pub struct MdTabularSection {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub synonym: Option<String>,
     pub attributes: Vec<MdAttribute>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MdEnumValue {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub synonym: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MdJournalColumn {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub synonym: Option<String>,
+    pub references: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BsParam {
+    pub name: String,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub is_by_value: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub param_type: Option<String>,
+}
+
+fn is_false(v: &bool) -> bool {
+    !*v
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BsMethod {
+    pub name: String,
+    #[serde(rename = "kind")]
+    pub is_function: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_directive: Option<String>,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub is_export: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub params: Vec<BsParam>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub return_description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BsContext {
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub server: bool,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub server_call: bool,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub client_managed_app: bool,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub client_ordinary_app: bool,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub external_connection: bool,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub global: bool,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub privileged: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BsModule {
+    pub module_type: String,
+    pub module_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<BsContext>,
+    pub methods: Vec<BsMethod>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,6 +168,40 @@ pub struct MdObject {
     pub code_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code_allowed_length: Option<String>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub dimensions: Vec<MdAttribute>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub resources: Vec<MdAttribute>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub periodicity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub write_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_filter_on_period: Option<bool>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub enum_values: Vec<MdEnumValue>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub journal_columns: Vec<MdJournalColumn>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub registered_documents: Vec<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub register_type: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub constant_type: Option<MdType>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub characteristic_ext_values: Option<String>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub modules: Vec<BsModule>,
 }
 
 impl MdObject {

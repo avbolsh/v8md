@@ -1,6 +1,7 @@
 mod model;
 mod parser;
 mod type_parser;
+mod module_parser;
 mod cache;
 mod commands;
 
@@ -22,7 +23,7 @@ enum Commands {
     },
     #[command(about = "Get metadata for a 1C object")]
     Get {
-        #[arg(help = "Object name, e.g. Document.Заказ or Catalog.Контрагенты")]
+        #[arg(help = "Object name, e.g. Document.Заказ, Catalog.Контрагенты, InformationRegister.КурсыВалют, Enum.СостоянияЗаказов, Constant.ВалютаУчета")]
         object: String,
         #[arg(short, long, help = "Show only attributes (properties)")]
         r#attributes: bool,
@@ -36,7 +37,7 @@ enum Commands {
     },
     #[command(about = "List all cached objects")]
     List {
-        #[arg(help = "Filter by kind: Document, Catalog")]
+        #[arg(help = "Filter by kind: Document, Catalog, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan")]
         kind: Option<String>,
     },
 }

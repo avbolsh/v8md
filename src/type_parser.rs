@@ -125,6 +125,12 @@ pub fn parse_type_from_bytes(data: &[u8]) -> MdType {
                     "InformationRegisterRef" => {
                         MdType::InformationRegisterRef(name.to_string())
                     }
+                    "AccumulationRegisterRef" => {
+                        MdType::AccumulationRegisterRef(name.to_string())
+                    }
+                    "ExchangePlanRef" => {
+                        MdType::ExchangePlanRef(name.to_string())
+                    }
                     _ => MdType::String { length: 0, allowed_length: "Variable".to_string() },
                 }
             } else {
@@ -153,6 +159,12 @@ pub fn parse_type_from_bytes(data: &[u8]) -> MdType {
                         }
                         "InformationRegisterRef" => {
                             types.push(MdType::InformationRegisterRef(name.to_string()))
+                        }
+                        "AccumulationRegisterRef" => {
+                            types.push(MdType::AccumulationRegisterRef(name.to_string()))
+                        }
+                        "ExchangePlanRef" => {
+                            types.push(MdType::ExchangePlanRef(name.to_string()))
                         }
                         _ => {}
                     }
