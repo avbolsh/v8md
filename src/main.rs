@@ -4,6 +4,7 @@ mod type_parser;
 mod module_parser;
 mod cache;
 mod commands;
+mod mcp;
 
 use clap::Parser;
 
@@ -40,6 +41,8 @@ enum Commands {
         #[arg(help = "Filter by kind: Document, Catalog, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan")]
         kind: Option<String>,
     },
+    #[command(about = "Run as MCP server (JSON-RPC over stdio)")]
+    Serve,
 }
 
 fn main() {
@@ -48,9 +51,12 @@ fn main() {
     match cli.command {
         Commands::LoadDump { path } => {
             let p = std::path::PathBuf::from(&path);
-            if let Err(e) = commands::load_dump(&p) {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
+            match commands::load_dump(&p) {
+                Ok(msg) => println!("{}", msg),
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
         Commands::Get {
@@ -71,11 +77,15 @@ fn main() {
                 std::process::exit(1);
             }
         },
-        Commands::List { kind } => {
-            if let Err(e) = commands::list_objects(kind.as_deref()) {
+        Commands::List { kind } => match commands::list_objects(kind.as_deref()) {
+            Ok(output) => println!("{}", output),
+            Err(e) => {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }
+        },
+        Commands::Serve => {
+            mcp::serve();
         }
     }
 }

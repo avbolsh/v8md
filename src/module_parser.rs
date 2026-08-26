@@ -223,16 +223,18 @@ fn parse_params(params_str: &str) -> Vec<BsParam> {
             continue;
         }
 
-        let is_by_value = part.starts_with("Знач ") || part.starts_with("Val ");
-        let part = if is_by_value {
-            part[5..].trim()
+        let (is_by_value, part) = if let Some(rest) = part.strip_prefix("Знач ") {
+            (true, rest.trim())
+        } else if let Some(rest) = part.strip_prefix("Val ") {
+            (true, rest.trim())
         } else {
-            part
+            (false, part)
         };
 
-        let (name, default_value) = if let Some(eq_pos) = part.find('=') {
-            let name = part[..eq_pos].trim().to_string();
-            let default = part[eq_pos + 1..].trim().to_string();
+let (name, default_value) = if let Some(eq_pos) = part.find('=') {
+            let (before, after) = part.split_at(eq_pos);
+            let name = before.trim().to_string();
+            let default = after[1..].trim().to_string();
             (name, Some(default))
         } else {
             (part.to_string(), None)

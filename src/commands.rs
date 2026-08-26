@@ -3,7 +3,7 @@ use crate::model::{MdObject, MdType, BsModule};
 use std::fs;
 use std::path::Path;
 
-pub fn load_dump(path: &Path) -> Result<(), String> {
+pub fn load_dump(path: &Path) -> Result<String, String> {
     let config_path = path.join("Configuration.xml");
     if !config_path.exists() {
         return Err(format!("Configuration.xml not found in {}", path.display()));
@@ -46,8 +46,7 @@ pub fn load_dump(path: &Path) -> Result<(), String> {
 
     cache::save_cache_index(&index).map_err(|e| e.to_string())?;
 
-    println!("Loaded {} objects into cache", index.objects.len());
-    Ok(())
+    Ok(format!("Loaded {} objects into cache", index.objects.len()))
 }
 
 fn parse_config_info(xml: &str) -> (String, String) {
@@ -708,9 +707,11 @@ pub fn list_objects(kind_filter: Option<&str>) -> Result<String, String> {
 
     entries.sort_by(|a, b| a.kind.cmp(&b.kind).then(a.name.cmp(&b.name)));
 
+    let mut output = String::new();
     for entry in &entries {
-        println!("{}.{}", entry.kind, entry.name);
+        output.push_str(&format!("{}.{}\n", entry.kind, entry.name));
     }
+    output.push_str(&format!("Total: {} objects", entries.len()));
 
-    Ok(format!("Total: {} objects", entries.len()))
+    Ok(output)
 }
