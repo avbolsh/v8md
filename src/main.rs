@@ -8,7 +8,7 @@ mod mcp;
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(name = "v8md", about = "1C metadata configuration CLI tool")]
+#[command(name = "v8md", about = "1C configuration metadata CLI tool and MCP server")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -31,21 +31,21 @@ enum Commands {
         r#attributes: bool,
         #[arg(short, long, help = "Show only tabular sections")]
         tabular: bool,
-        #[arg(long, help = "Project name (required)")]
+        #[arg(long, help = "Project name: a named 1C base, independent cache. Run 'v8md projects' to list loaded projects")]
         project: String,
     },
     #[command(about = "Get types of a specific attribute")]
     Types {
         #[arg(help = "Path to attribute, e.g. Document.Заказ.Покупатель")]
         path: String,
-        #[arg(long, help = "Project name (required)")]
+        #[arg(long, help = "Project name: a named 1C base, independent cache. Run 'v8md projects' to list loaded projects")]
         project: String,
     },
     #[command(about = "List all cached objects of a project")]
     List {
         #[arg(help = "Filter by kind: Document, Catalog, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan")]
         kind: Option<String>,
-        #[arg(long, help = "Project name (required)")]
+        #[arg(long, help = "Project name: a named 1C base, independent cache. Run 'v8md projects' to list loaded projects")]
         project: String,
     },
     #[command(about = "List loaded projects")]
