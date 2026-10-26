@@ -33,95 +33,111 @@ cargo build --release
 
 ## Использование
 
-### 1. Загрузка XML-дампа в кэш
+Все команды работают с **именованным проектом** (`--project`). Каждый проект — своя база 1С, кэши не пересекаются. Список проектов по нескольким базам:
 
 ```bash
-v8md load-dump <путь_к_дампу>
+v8md load-dump C:\Dumps\Учет --project Учет
+v8md load-dump C:\Dumps\Розница --project Розница
+v8md projects
+
+Учет — УчетТорговли (version 3.1.4.1)
+Розница — РозничнаяТорговля (version 2.2.0.0)
+```
+
+### 1. Загрузка XML-дампа в кэш проекта
+
+```bash
+v8md load-dump <путь_к_дампу> --project <имя>
 ```
 
 Пример:
 ```bash
-v8md load-dump C:\Projects\MyConfig\dump
+v8md load-dump C:\Projects\MyConfig\dump --project Учет
 ```
 
-Кэш сохраняется в `~/.v8md/`. При каждой загрузке кэш перестраивается заново.
+Кэш сохраняется в `~/.v8md/projects/<имя>/`. При каждой загрузке кэш проекта перестраивается заново.
 
 ### 2. Получение метаданных объекта
 
 ```bash
-v8md get <Тип.Имя>
+v8md get <Тип.Имя> --project <имя>
 ```
 
 Примеры:
 ```bash
 # Справочник
-v8md get Catalog.Контрагенты
+v8md get Catalog.Контрагенты --project Учет
 
 # Документ
-v8md get Document.Заказ
+v8md get Document.Заказ --project Учет
 
 # Регистр сведений
-v8md get InformationRegister.КурсыВалют
+v8md get InformationRegister.КурсыВалют --project Розница
 
 # Регистр накопления
-v8md get AccumulationRegister.ТоварныеЗапасы
+v8md get AccumulationRegister.ТоварныеЗапасы --project Розница
 
 # Перечисление
-v8md get Enum.СостоянияЗаказов
+v8md get Enum.СостоянияЗаказов --project Учет
 
 # Константа
-v8md get Constant.ВалютаУчета
+v8md get Constant.ВалютаУчета --project Учет
 
 # Журнал документов
-v8md get DocumentJournal.ФинансовыеДокументы
+v8md get DocumentJournal.ФинансовыеДокументы --project Учет
 
 # План видов характеристик
-v8md get ChartOfCharacteristicTypes.ВидыХарактеристик
+v8md get ChartOfCharacteristicTypes.ВидыХарактеристик --project Учет
 
 # План обмена
-v8md get ExchangePlan.Мобильные
+v8md get ExchangePlan.Мобильные --project Розница
 ```
 
 #### Опции
 
 ```bash
 # Только атрибуты (реквизиты)
-v8md get Document.Заказ -a
+v8md get Document.Заказ -a --project Учет
 
 # Только табличные части
-v8md get Document.Заказ -t
+v8md get Document.Заказ -t --project Учет
 ```
 
 ### 3. Получение типа атрибута
 
 ```bash
-v8md types <Тип.Объект.Атрибут>
+v8md types <Тип.Объект.Атрибут> --project <имя>
 ```
 
 Пример:
 ```bash
-v8md types Document.Заказ.Покупатель
+v8md types Document.Заказ.Покупатель --project Учет
 ```
 
-### 4. Список объектов
+### 4. Список объектов проекта
 
 ```bash
 # Все объекты
-v8md list
+v8md list --project Учет
 
 # Фильтр по типу
-v8md list Document
-v8md list Catalog
-v8md list Document
+v8md list Document --project Учет
+v8md list Catalog --project Розница
 ```
 
-### 5. Запуск в режиме MCP-сервера
+### 5. Список загруженных проектов
+
+```bash
+v8md projects
+```
+
+### 6. Запуск в режиме MCP-сервера
 
 ```bash
 v8md serve
 ```
 
-Открывает JSON-RPC over stdio с инструментами: `v8md_load_dump`, `v8md_get`, `v8md_types`, `v8md_list`.
+Открывает JSON-RPC over stdio с инструментами: `v8md_load_dump`, `v8md_projects`, `v8md_get`, `v8md_types`, `v8md_list`. Для всех инструментов (кроме `v8md_projects`) параметр `project` обязателен.
 
 Пример настройки для клиентов, поддерживающих MCP:
 

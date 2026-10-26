@@ -3,13 +3,19 @@ use crate::model::{MdObject, MdType};
 use std::fs;
 use std::path::Path;
 
-pub fn load_dump(path: &Path) -> Result<String, String> {
+pub fn load_dump(path: &Path, project: &str) -> Result<String, String> {
+    if !cache::valid_project_name(project) {
+        return Err(format!(
+            "Invalid project name: '{}'. Name must be non-empty and contain no path characters (\\ / : * ? \" < > |) and not be '.' or '..'",
+            project
+        ));
+    }
     let config_path = path.join("Configuration.xml");
     if !config_path.exists() {
         return Err(format!("Configuration.xml not found in {}", path.display()));
     }
 
-    cache::clear_cache().map_err(|e| e.to_string())?;
+    cache::clear_cache(project).map_err(|e| e.to_string())?;
 
     let mut objects: Vec<MdObject> = Vec::new();
 
@@ -25,7 +31,7 @@ pub fn load_dump(path: &Path) -> Result<String, String> {
 
     let mut entries: Vec<crate::model::CacheIndexEntry> = Vec::new();
     for obj in &objects {
-        let file = cache::save_object(obj).map_err(|e| e.to_string())?;
+        let file = cache::save_object(project, obj).map_err(|e| e.to_string())?;
         entries.push(crate::model::CacheIndexEntry {
             kind: obj.kind.clone(),
             name: obj.name.clone(),
@@ -42,9 +48,27 @@ pub fn load_dump(path: &Path) -> Result<String, String> {
         objects: entries,
     };
 
-    cache::save_cache_index(&index).map_err(|e| e.to_string())?;
+    cache::save_cache_index(project, &index).map_err(|e| e.to_string())?;
 
-    Ok(format!("Loaded {} objects into cache", index.objects.len()))
+    Ok(format!("Loaded {} objects into cache (project '{}')", index.objects.len(), project))
+}
+
+pub fn projects_list() -> Result<String, String> {
+    let projects = cache::list_projects();
+    if projects.is_empty() {
+        return Ok("No projects loaded. Use 'v8md load-dump <path> --project <name>' first.".to_string());
+    }
+
+    let mut lines: Vec<String> = Vec::new();
+    for p in &projects {
+        if p.config_name.is_empty() {
+            lines.push(p.name.clone());
+        } else {
+            lines.push(format!("{} — {} (version {})", p.name, p.config_name, p.config_version));
+        }
+    }
+
+    Ok(lines.join("\n"))
 }
 
 fn parse_config_info(xml: &str) -> (String, String) {
@@ -286,11 +310,11 @@ fn serialize_type_list(md_type: &MdType) -> Vec<serde_json::Value> {
     }
 }
 
-pub fn get_object(query: &str, show_attributes: bool, show_tabular: bool) -> Result<String, String> {
-    let obj = cache::find_object(query).ok_or_else(|| {
+pub fn get_object(query: &str, show_attributes: bool, show_tabular: bool, project: &str) -> Result<String, String> {
+    let obj = cache::find_object(project, query).ok_or_else(|| {
         format!(
-            "Object '{}' not found in cache. Run 'v8md load-dump' first.",
-            query
+            "Object '{}' not found in cache of project '{}'. Run 'v8md load-dump <path> --project {}' first.",
+            query, project, project
         )
     })?;
 
@@ -451,7 +475,10 @@ pub fn get_object(query: &str, show_attributes: bool, show_tabular: bool) -> Res
     serde_json::to_string_pretty(&result).map_err(|e| e.to_string())
 }
 
-pub fn get_types(query: &str) -> Result<String, String> {
+pub fn get_types(query: &str, project: &str) -> Result<String, String> {
+    if !cache::valid_project_name(project) {
+        return Err(format!("Invalid project name: '{}'", project));
+    }
     let parts: Vec<&str> = query.split('.').collect();
     if parts.len() < 3 {
         return Err(
@@ -463,8 +490,8 @@ pub fn get_types(query: &str) -> Result<String, String> {
     let obj_name = parts[1];
     let attr_name = parts[2..].join(".");
 
-    let obj = cache::load_object(kind, obj_name)
-        .ok_or_else(|| format!("Object '{}.{}' not found in cache", kind, obj_name))?;
+    let obj = cache::load_object(project, kind, obj_name)
+        .ok_or_else(|| format!("Object '{}.{}' not found in cache of project '{}'", kind, obj_name, project))?;
 
     for attr in &obj.attributes {
         if attr.name == attr_name {
@@ -501,9 +528,12 @@ pub fn get_types(query: &str) -> Result<String, String> {
     ))
 }
 
-pub fn list_objects(kind_filter: Option<&str>) -> Result<String, String> {
-    let index = cache::load_cache_index()
-        .ok_or_else(|| "Cache is empty. Run 'v8md load-dump' first.".to_string())?;
+pub fn list_objects(kind_filter: Option<&str>, project: &str) -> Result<String, String> {
+    if !cache::valid_project_name(project) {
+        return Err(format!("Invalid project name: '{}'", project));
+    }
+    let index = cache::load_cache_index(project)
+        .ok_or_else(|| format!("Project '{}' not found. Run 'v8md load-dump <path> --project {}' first.", project, project))?;
 
     let mut entries: Vec<&crate::model::CacheIndexEntry> = index.objects.iter().collect();
     if let Some(filter) = kind_filter {

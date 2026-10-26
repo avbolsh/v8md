@@ -20,6 +20,8 @@ enum Commands {
     LoadDump {
         #[arg(help = "Path to the directory containing Configuration.xml")]
         path: String,
+        #[arg(long, help = "Project name (required). Cache of this project is rebuilt from scratch")]
+        project: String,
     },
     #[command(about = "Get metadata for a 1C object")]
     Get {
@@ -29,17 +31,25 @@ enum Commands {
         r#attributes: bool,
         #[arg(short, long, help = "Show only tabular sections")]
         tabular: bool,
+        #[arg(long, help = "Project name (required)")]
+        project: String,
     },
     #[command(about = "Get types of a specific attribute")]
     Types {
         #[arg(help = "Path to attribute, e.g. Document.Заказ.Покупатель")]
         path: String,
+        #[arg(long, help = "Project name (required)")]
+        project: String,
     },
-    #[command(about = "List all cached objects")]
+    #[command(about = "List all cached objects of a project")]
     List {
         #[arg(help = "Filter by kind: Document, Catalog, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan")]
         kind: Option<String>,
+        #[arg(long, help = "Project name (required)")]
+        project: String,
     },
+    #[command(about = "List loaded projects")]
+    Projects,
     #[command(about = "Run as MCP server (JSON-RPC over stdio)")]
     Serve,
 }
@@ -48,9 +58,9 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::LoadDump { path } => {
+        Commands::LoadDump { path, project } => {
             let p = std::path::PathBuf::from(&path);
-            match commands::load_dump(&p) {
+            match commands::load_dump(&p, &project) {
                 Ok(msg) => println!("{}", msg),
                 Err(e) => {
                     eprintln!("Error: {}", e);
@@ -62,21 +72,29 @@ fn main() {
             object,
             r#attributes,
             tabular,
-        } => match commands::get_object(&object, r#attributes, tabular) {
+            project,
+        } => match commands::get_object(&object, r#attributes, tabular, &project) {
             Ok(output) => println!("{}", output),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }
         },
-        Commands::Types { path } => match commands::get_types(&path) {
+        Commands::Types { path, project } => match commands::get_types(&path, &project) {
             Ok(output) => println!("{}", output),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }
         },
-        Commands::List { kind } => match commands::list_objects(kind.as_deref()) {
+        Commands::List { kind, project } => match commands::list_objects(kind.as_deref(), &project) {
+            Ok(output) => println!("{}", output),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        },
+        Commands::Projects => match commands::projects_list() {
             Ok(output) => println!("{}", output),
             Err(e) => {
                 eprintln!("Error: {}", e);

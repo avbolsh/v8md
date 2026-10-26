@@ -99,17 +99,26 @@ fn handle_tools_list() -> Value {
         "tools": [
             {
                 "name": "v8md_load_dump",
-                "description": "Загрузить XML-дамп конфигурации 1С в кэш. Использовать один раз перед другими вызовами.",
+                "description": "Загрузить XML-дамп конфигурации 1С в кэш именованного проекта. Кэш проекта пересоздаётся заново.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "path": {
                             "type": "string",
                             "description": "Путь к папке с Configuration.xml"
+                        },
+                        "project": {
+                            "type": "string",
+                            "description": "Имя проекта (обязательно). Разные проекты позволяют работать с несколькими базами одновременно."
                         }
                     },
-                    "required": ["path"]
+                    "required": ["path", "project"]
                 }
+            },
+            {
+                "name": "v8md_projects",
+                "description": "Список загруженных проектов (баз 1С) с именем и версией конфигурации. Вызывайте, чтобы выбрать, в какой проект грузить дамп или из какого читать метаданные.",
+                "inputSchema": { "type": "object", "properties": {} }
             },
             {
                 "name": "v8md_get",
@@ -121,6 +130,10 @@ fn handle_tools_list() -> Value {
                             "type": "string",
                             "description": "Имя объекта, например: Catalog.Контрагенты, Document.Заказ"
                         },
+                        "project": {
+                            "type": "string",
+                            "description": "Имя проекта (обязательно), например из v8md_projects"
+                        },
                         "attributes_only": {
                             "type": "boolean",
                             "description": "Показать только атрибуты (реквизиты)"
@@ -130,7 +143,7 @@ fn handle_tools_list() -> Value {
                             "description": "Показать только табличные части"
                         }
                     },
-                    "required": ["object"]
+                    "required": ["object", "project"]
                 }
             },
             {
@@ -142,22 +155,31 @@ fn handle_tools_list() -> Value {
                         "path": {
                             "type": "string",
                             "description": "Путь к атрибуту, например: Document.Заказ.Покупатель"
+                        },
+                        "project": {
+                            "type": "string",
+                            "description": "Имя проекта (обязательно), например из v8md_projects"
                         }
                     },
-                    "required": ["path"]
+                    "required": ["path", "project"]
                 }
             },
             {
                 "name": "v8md_list",
-                "description": "Список всех объектов 1С в кэше. Можно указать фильтр по типу.",
+                "description": "Список всех объектов 1С в кэше проекта. Можно указать фильтр по типу.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "kind": {
                             "type": "string",
                             "description": "Фильтр по типу: Catalog, Document, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan"
+                        },
+                        "project": {
+                            "type": "string",
+                            "description": "Имя проекта (обязательно), например из v8md_projects"
                         }
-                    }
+                    },
+                    "required": ["project"]
                 }
             }
         ]
@@ -178,14 +200,24 @@ fn handle_tools_call(params: Value) -> Value {
             let path = arguments.get("path")
                 .and_then(|p| p.as_str())
                 .unwrap_or("");
-            match commands::load_dump(&std::path::PathBuf::from(path)) {
+            let project = arguments.get("project")
+                .and_then(|p| p.as_str())
+                .unwrap_or("");
+            match commands::load_dump(&std::path::PathBuf::from(path), project) {
                 Ok(msg) => (msg, false),
                 Err(e) => (e, true),
             }
         }
+        "v8md_projects" => match commands::projects_list() {
+            Ok(output) => (output, false),
+            Err(e) => (e, true),
+        },
         "v8md_get" => {
             let object = arguments.get("object")
                 .and_then(|o| o.as_str())
+                .unwrap_or("");
+            let project = arguments.get("project")
+                .and_then(|p| p.as_str())
                 .unwrap_or("");
             let attributes_only = arguments.get("attributes_only")
                 .and_then(|a| a.as_bool())
@@ -193,7 +225,7 @@ fn handle_tools_call(params: Value) -> Value {
             let tabular_only = arguments.get("tabular_only")
                 .and_then(|t| t.as_bool())
                 .unwrap_or(false);
-            match commands::get_object(object, attributes_only, tabular_only) {
+            match commands::get_object(object, attributes_only, tabular_only, project) {
                 Ok(output) => (output, false),
                 Err(e) => (e, true),
             }
@@ -202,7 +234,10 @@ fn handle_tools_call(params: Value) -> Value {
             let path = arguments.get("path")
                 .and_then(|p| p.as_str())
                 .unwrap_or("");
-            match commands::get_types(path) {
+            let project = arguments.get("project")
+                .and_then(|p| p.as_str())
+                .unwrap_or("");
+            match commands::get_types(path, project) {
                 Ok(output) => (output, false),
                 Err(e) => (e, true),
             }
@@ -211,7 +246,10 @@ fn handle_tools_call(params: Value) -> Value {
             let kind = arguments.get("kind")
                 .and_then(|k| k.as_str())
                 .map(|s| s.to_string());
-            match commands::list_objects(kind.as_deref()) {
+            let project = arguments.get("project")
+                .and_then(|p| p.as_str())
+                .unwrap_or("");
+            match commands::list_objects(kind.as_deref(), project) {
                 Ok(output) => (output, false),
                 Err(e) => (e, true),
             }
