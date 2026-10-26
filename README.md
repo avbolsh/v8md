@@ -7,7 +7,7 @@ CLI-утилита и MCP-сервер для извлечения метада�
 - Кэширование результатов для быстрого доступа
 - Поддержка всех основных типов метаданных
 - Встроенный MCP-сервер (`v8md serve`, JSON-RPC over stdio)
-- Интеграция с AI-агентами (opencode, cursor и др.) напрямую или через MCP
+- Интеграция с AI-агентами (opencode, cursor и др.) через MCP
 
 ## Поддерживаемые типы метаданных
 
@@ -216,81 +216,46 @@ v8md serve
 
 ## Интеграция с AI-агентами
 
+Работа через MCP (`v8md serve`) — без плагинов и скриптов.
+
 ### opencode
 
-1. Скопируйте бинарник в `.opencode/bin/v8md.exe`
+Добавьте сервер командой:
 
-2. Создайте плагин `.opencode/plugins/v8md.ts`:
+```bash
+opencode mcp add v8md -- D:\path\to\v8md.exe serve
+```
 
-```typescript
-import { Plugin, tool } from "@opencode-ai/plugin"
-import { $ } from "bun"
-import path from "path"
-import { z } from "zod"
+или вручную в `opencode.json` (глобальный `~/.config/opencode/opencode.json` или проектный):
 
-export const V8MDPlugin: Plugin = async () => {
-  return {
-    tool: {
-      "v8md-load": tool({
-        description: "Загрузить XML-дамп конфигурации 1С в кэш. Использовать один раз для загрузки метаданных.",
-        args: z.object({
-          path: z.string().describe("Путь к папке с Configuration.xml"),
-        }),
-        async execute({ path: dumpPath }, { directory }) {
-          const v8mdExe = path.join(directory, "bin", "v8md.exe")
-          const result = await $`${v8mdExe} load-dump ${dumpPath}`.text()
-          return result
-        },
-      }),
-
-      "v8md-get": tool({
-        description: "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, Catalog.Контрагенты).",
-        args: z.object({
-          object: z.string().describe("Имя объекта, например: Catalog.Контрагенты, Document.Заказ"),
-          attributes_only: z.boolean().optional().describe("Показать только атрибуты"),
-          tabular_only: z.boolean().optional().describe("Показать только табличные части"),
-        }),
-        async execute({ object, attributes_only, tabular_only }, { directory }) {
-          const v8mdExe = path.join(directory, "bin", "v8md.exe")
-          const args = ["get", object]
-          if (attributes_only) args.push("-a")
-          if (tabular_only) args.push("-t")
-          const result = await $`${v8mdExe} ${args}`.json()
-          return JSON.stringify(result, null, 2)
-        },
-      }),
-
-      "v8md-types": tool({
-        description: "Получить типы атрибута объекта 1С. Формат: Тип.Объект.Атрибут (например: Document.Заказ.Покупатель).",
-        args: z.object({
-          path: z.string().describe("Путь к атрибуту, например: Document.Заказ.Покупатель"),
-        }),
-        async execute({ path: attrPath }, { directory }) {
-          const v8mdExe = path.join(directory, "bin", "v8md.exe")
-          const result = await $`${v8mdExe} types ${attrPath}`.json()
-          return JSON.stringify(result, null, 2)
-        },
-      }),
-
-      "v8md-list": tool({
-        description: "Список всех объектов 1С в кэше. Можно указать фильтр по типу.",
-        args: z.object({
-          kind: z.string().optional().describe("Фильтр по типу: Catalog, Document, InformationRegister и т.д."),
-        }),
-        async execute({ kind }, { directory }) {
-          const v8mdExe = path.join(directory, "bin", "v8md.exe")
-          const args = ["list"]
-          if (kind) args.push(kind)
-          const result = await $`${v8mdExe} ${args}`.text()
-          return result
-        },
-      }),
-    },
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "v8md": {
+        "type": "local",
+        "command": ["D:\\path\\to\\v8md.exe", "serve"]
+      }
+    }
   }
 }
 ```
 
-3. Добавьте плагин в конфигурацию opencode.
+Проверка подключения: `opencode mcp list` — статус `connected`. Инструменты будут доступны агенту как `v8md_v8md_get`, `v8md_v8md_list` и т.д.
+
+### Другие MCP-клиенты (Cursor и т.п.)
+
+```json
+{
+  "mcpServers": {
+    "v8md": {
+      "command": "D:\\path\\to\\v8md.exe",
+      "args": ["serve"]
+    }
+  }
+}
+```
 
 ### Примеры промптов для AI-агента
 
@@ -319,12 +284,9 @@ v8md/
 │   ├── model.rs          # Структуры данных (MdObject и т.д.)
 │   ├── parser.rs         # Парсинг XML метаданных
 │   ├── type_parser.rs    # Парсинг типов данных
-│   ├── cache.rs          # Кэширование (~/.v8md/)
+│   ├── cache.rs          # Кэширование (~/.v8md/projects/<имя>/)
 │   ├── commands.rs       # Команды CLI
 │   └── mcp.rs            # MCP-сервер (JSON-RPC over stdio)
-├── .opencode/
-│   ├── bin/v8md.exe      # Бинарник
-│   └── plugins/v8md.ts   # Плагин для opencode
 ├── Cargo.toml
 └── README.md
 ```
