@@ -36,7 +36,6 @@ pub fn save_object(obj: &MdObject) -> std::io::Result<String> {
         "Constant" => "constants",
         "DocumentJournal" => "document_journals",
         "ExchangePlan" => "exchange_plans",
-        "CommonModule" => "common_modules",
         other => other,
     };
     let dir = cache_dir().join(sub_dir);
@@ -61,7 +60,6 @@ pub fn load_object(kind: &str, name: &str) -> Option<MdObject> {
         "Constant" => "constants",
         "DocumentJournal" => "document_journals",
         "ExchangePlan" => "exchange_plans",
-        "CommonModule" => "common_modules",
         other => other,
     };
     let path = cache_dir().join(sub_dir).join(format!("{}.json", name));

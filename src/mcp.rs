@@ -113,13 +113,13 @@ fn handle_tools_list() -> Value {
             },
             {
                 "name": "v8md_get",
-                "description": "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, Catalog.Контрагенты, CommonModule.РаботаСПочтой).",
+                "description": "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, Catalog.Контрагенты).",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "object": {
                             "type": "string",
-                            "description": "Имя объекта, например: Catalog.Контрагенты, Document.Заказ, CommonModule.РаботаСПочтой"
+                            "description": "Имя объекта, например: Catalog.Контрагенты, Document.Заказ"
                         },
                         "attributes_only": {
                             "type": "boolean",
@@ -155,7 +155,7 @@ fn handle_tools_list() -> Value {
                     "properties": {
                         "kind": {
                             "type": "string",
-                            "description": "Фильтр по типу: Catalog, Document, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan, CommonModule"
+                            "description": "Фильтр по типу: Catalog, Document, InformationRegister, AccumulationRegister, ChartOfCharacteristicTypes, Enum, Constant, DocumentJournal, ExchangePlan"
                         }
                     }
                 }

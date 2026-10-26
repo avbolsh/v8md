@@ -239,7 +239,6 @@ pub fn parse_document(xml: &[u8]) -> Option<MdObject> {
         register_type: None,
         constant_type: None,
         characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -346,7 +345,6 @@ pub fn parse_catalog(xml: &[u8]) -> Option<MdObject> {
         register_type: None,
         constant_type: None,
         characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -452,7 +450,6 @@ pub fn parse_information_register(xml: &[u8]) -> Option<MdObject> {
         register_type: None,
         constant_type: None,
         characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -516,7 +513,6 @@ pub fn parse_accumulation_register(xml: &[u8]) -> Option<MdObject> {
         periodicity: None, write_mode: None, main_filter_on_period: None,
         enum_values: Vec::new(), journal_columns: Vec::new(), registered_documents: Vec::new(),
         register_type, constant_type: None, characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -586,7 +582,6 @@ pub fn parse_chart_of_characteristic_types(xml: &[u8]) -> Option<MdObject> {
         periodicity: None, write_mode: None, main_filter_on_period: None,
         enum_values: Vec::new(), journal_columns: Vec::new(), registered_documents: Vec::new(),
         register_type: None, constant_type: None, characteristic_ext_values,
-        modules: Vec::new(),
     })
 }
 
@@ -636,7 +631,6 @@ pub fn parse_enum(xml: &[u8]) -> Option<MdObject> {
         periodicity: None, write_mode: None, main_filter_on_period: None,
         enum_values, journal_columns: Vec::new(), registered_documents: Vec::new(),
         register_type: None, constant_type: None, characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -664,7 +658,6 @@ pub fn parse_constant(xml: &[u8]) -> Option<MdObject> {
         periodicity: None, write_mode: None, main_filter_on_period: None,
         enum_values: Vec::new(), journal_columns: Vec::new(), registered_documents: Vec::new(),
         register_type: None, constant_type, characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -733,7 +726,6 @@ pub fn parse_document_journal(xml: &[u8]) -> Option<MdObject> {
         periodicity: None, write_mode: None, main_filter_on_period: None,
         enum_values: Vec::new(), journal_columns, registered_documents,
         register_type: None, constant_type: None, characteristic_ext_values: None,
-        modules: Vec::new(),
     })
 }
 
@@ -801,27 +793,5 @@ pub fn parse_exchange_plan(xml: &[u8]) -> Option<MdObject> {
         periodicity: None, write_mode: None, main_filter_on_period: None,
         enum_values: Vec::new(), journal_columns: Vec::new(), registered_documents: Vec::new(),
         register_type: None, constant_type: None, characteristic_ext_values: None,
-        modules: Vec::new(),
-    })
-}
-
-pub fn parse_common_module_xml(xml: &[u8]) -> Option<BsContext> {
-    let text = String::from_utf8_lossy(xml);
-    let props = extract_properties_block(&text)?;
-
-    let parse_bool = |tag: &str| -> bool {
-        extract_text_between(props, &format!("<{}>", tag), &format!("</{}>", tag))
-            .map(|v| v == "true")
-            .unwrap_or(false)
-    };
-
-    Some(BsContext {
-        server: parse_bool("Server"),
-        server_call: parse_bool("ServerCall"),
-        client_managed_app: parse_bool("ClientManagedApplication"),
-        client_ordinary_app: parse_bool("ClientOrdinaryApplication"),
-        external_connection: parse_bool("ExternalConnection"),
-        global: parse_bool("Global"),
-        privileged: parse_bool("Privileged"),
     })
 }

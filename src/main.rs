@@ -1,7 +1,6 @@
 mod model;
 mod parser;
 mod type_parser;
-mod module_parser;
 mod cache;
 mod commands;
 mod mcp;

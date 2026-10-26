@@ -6,7 +6,6 @@ CLI-утилита и MCP-сервер для извлечения метада�
 - Извлечение метаданных из XML-дампа конфигурации 1С
 - Кэширование результатов для быстрого доступа
 - Поддержка всех основных типов метаданных
-- Парсинг программных интерфейсов (BSL-модулей), включая модули менеджеров
 - Встроенный MCP-сервер (`v8md serve`, JSON-RPC over stdio)
 - Интеграция с AI-агентами (opencode, cursor и др.) напрямую или через MCP
 
@@ -23,7 +22,6 @@ CLI-утилита и MCP-сервер для извлечения метада�
 | `Constant` | Константы |
 | `DocumentJournal` | Журналы документов |
 | `ExchangePlan` | Планы обмена |
-| `CommonModule` | Общие модули |
 
 ## Установка
 
@@ -47,8 +45,6 @@ v8md load-dump C:\Projects\MyConfig\dump
 ```
 
 Кэш сохраняется в `~/.v8md/`. При каждой загрузке кэш перестраивается заново.
-
-Вместе с метаданными парсятся BSL-модули: модуль менеджера объекта (`Ext/ManagerModule.bsl`) и общие модули (`CommonModules/<Имя>/Ext/Module.bsl`) с описаниями методов из комментариев.
 
 ### 2. Получение метаданных объекта
 
@@ -84,9 +80,6 @@ v8md get ChartOfCharacteristicTypes.ВидыХарактеристик
 
 # План обмена
 v8md get ExchangePlan.Мобильные
-
-# Общий модуль
-v8md get CommonModule.РаботаСПочтой
 ```
 
 #### Опции
@@ -117,7 +110,7 @@ v8md types Document.Заказ.Покупатель
 v8md list
 
 # Фильтр по типу
-v8md list CommonModule
+v8md list Document
 v8md list Catalog
 v8md list Document
 ```
@@ -205,50 +198,6 @@ v8md serve
 }
 ```
 
-### Общий модуль
-
-```json
-{
-  "object": "CommonModule.РаботаСПочтойВызовСервера",
-  "type": "CommonModule",
-  "context": {
-    "server": true,
-    "server_call": true
-  },
-  "methods": [
-    {
-      "name": "ПолучитьПисьма",
-      "kind": "Function",
-      "export": true,
-      "params": [
-        { "name": "Количество" },
-        { "name": "ИспользоватьIMAP" },
-        { "name": "ПочтовыйЯщикIMAP" }
-      ]
-    },
-    {
-      "name": "ПроверитьЭлектронныйАдрес",
-      "kind": "Function",
-      "export": true,
-      "params": [
-        { "name": "ЭлектроннаяПочта", "type": "Строка", "description": "адрес электронной почты" }
-      ],
-      "returns": "Истина, если адрес корректный"
-    }
-  ]
-}
-```
-
-#### Контекст модуля
-
-| Поле | Описание |
-|------|----------|
-| `server` | Серверный модуль |
-| `server_call` | Можно вызвать с клиента (серверная функция) |
-| `client` | Клиент управляемого приложения |
-| `global` | Глобальный модуль |
-| `privileged` | Привилегированный режим |
-
 ## Интеграция с AI-агентами
 
 ### opencode
@@ -279,9 +228,9 @@ export const V8MDPlugin: Plugin = async () => {
       }),
 
       "v8md-get": tool({
-        description: "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, CommonModule.РаботаСПочтой).",
+        description: "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, Catalog.Контрагенты).",
         args: z.object({
-          object: z.string().describe("Имя объекта, например: Catalog.Контрагенты, Document.Заказ, CommonModule.РаботаСПочтой"),
+          object: z.string().describe("Имя объекта, например: Catalog.Контрагенты, Document.Заказ"),
           attributes_only: z.boolean().optional().describe("Показать только атрибуты"),
           tabular_only: z.boolean().optional().describe("Показать только табличные части"),
         }),
@@ -310,7 +259,7 @@ export const V8MDPlugin: Plugin = async () => {
       "v8md-list": tool({
         description: "Список всех объектов 1С в кэше. Можно указать фильтр по типу.",
         args: z.object({
-          kind: z.string().optional().describe("Фильтр по типу: Catalog, Document, CommonModule и т.д."),
+          kind: z.string().optional().describe("Фильтр по типу: Catalog, Document, InformationRegister и т.д."),
         }),
         async execute({ kind }, { directory }) {
           const v8mdExe = path.join(directory, "bin", "v8md.exe")
@@ -338,19 +287,11 @@ export const V8MDPlugin: Plugin = async () => {
 ```
 
 ```
-Покажи методы модуля РаботаСПочтойВызовСервера
-```
-
-```
 Какой тип у реквизита Покупатель в документе Заказ?
 ```
 
 ```
 Покажи измерения и ресурсы регистра сведений КурсыВалют
-```
-
-```
-Напиши функцию на 1С, которая использует CommonModule.РаботаСПочтой для отправки письма
 ```
 
 ## Архитектура
@@ -359,9 +300,8 @@ export const V8MDPlugin: Plugin = async () => {
 v8md/
 ├── src/
 │   ├── main.rs           # CLI (clap)
-│   ├── model.rs          # Структуры данных (MdObject, BsModule и т.д.)
+│   ├── model.rs          # Структуры данных (MdObject и т.д.)
 │   ├── parser.rs         # Парсинг XML метаданных
-│   ├── module_parser.rs  # Парсинг BSL модулей
 │   ├── type_parser.rs    # Парсинг типов данных
 │   ├── cache.rs          # Кэширование (~/.v8md/)
 │   ├── commands.rs       # Команды CLI

@@ -1,5 +1,5 @@
 use crate::cache;
-use crate::model::{MdObject, MdType, BsModule};
+use crate::model::{MdObject, MdType};
 use std::fs;
 use std::path::Path;
 
@@ -22,8 +22,6 @@ pub fn load_dump(path: &Path) -> Result<String, String> {
     load_constants(path, &mut objects)?;
     load_document_journals(path, &mut objects)?;
     load_exchange_plans(path, &mut objects)?;
-    load_common_modules(path, &mut objects)?;
-    load_manager_modules(path, &mut objects)?;
 
     let mut entries: Vec<crate::model::CacheIndexEntry> = Vec::new();
     for obj in &objects {
@@ -224,121 +222,6 @@ fn load_exchange_plans(path: &Path, objects: &mut Vec<MdObject>) -> Result<(), S
             }
         }
     }
-    Ok(())
-}
-
-fn load_common_modules(path: &Path, objects: &mut Vec<MdObject>) -> Result<(), String> {
-    let dir = path.join("CommonModules");
-    if !dir.exists() { return Ok(()); }
-
-    for entry in fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
-        let module_dir = entry.path();
-        if !module_dir.is_dir() { continue; }
-
-        let module_name = module_dir.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_string();
-
-        let xml_path = module_dir.with_extension("xml");
-        let bsl_path = module_dir.join("Ext").join("Module.bsl");
-
-        let context = if xml_path.exists() {
-            let xml_data = fs::read(&xml_path).map_err(|e| e.to_string())?;
-            crate::parser::parse_common_module_xml(&xml_data)
-        } else {
-            None
-        };
-
-        let mut bs_module = if bsl_path.exists() {
-            let bsl_content = fs::read_to_string(&bsl_path).map_err(|e| e.to_string())?;
-            crate::module_parser::parse_bsl_module(&bsl_content, "CommonModule", &module_name)
-        } else {
-            BsModule {
-                module_type: "CommonModule".to_string(),
-                module_name: module_name.clone(),
-                context: None,
-                methods: Vec::new(),
-            }
-        };
-
-        bs_module.context = context;
-
-        objects.push(MdObject {
-            kind: "CommonModule".to_string(),
-            name: module_name,
-            synonym: None,
-            comment: None,
-            uuid: String::new(),
-            attributes: Vec::new(),
-            tabular_sections: Vec::new(),
-            number_type: None,
-            number_length: None,
-            number_allowed_length: None,
-            posting: None,
-            hierarchical: None,
-            hierarchy_type: None,
-            code_length: None,
-            description_length: None,
-            code_type: None,
-            code_allowed_length: None,
-            dimensions: Vec::new(),
-            resources: Vec::new(),
-            periodicity: None,
-            write_mode: None,
-            main_filter_on_period: None,
-            enum_values: Vec::new(),
-            journal_columns: Vec::new(),
-            registered_documents: Vec::new(),
-            register_type: None,
-            constant_type: None,
-            characteristic_ext_values: None,
-            modules: vec![bs_module],
-        });
-    }
-
-    Ok(())
-}
-
-fn load_manager_modules(path: &Path, objects: &mut Vec<MdObject>) -> Result<(), String> {
-    let kinds_dirs = [
-        ("Catalogs", "Catalog"),
-        ("Documents", "Document"),
-        ("InformationRegisters", "InformationRegister"),
-        ("AccumulationRegisters", "AccumulationRegister"),
-        ("ChartsOfCharacteristicTypes", "ChartOfCharacteristicTypes"),
-        ("Enums", "Enum"),
-        ("DocumentJournals", "DocumentJournal"),
-        ("ExchangePlans", "ExchangePlan"),
-    ];
-
-    for (dir_name, _kind) in &kinds_dirs {
-        let dir = path.join(dir_name);
-        if !dir.exists() { continue; }
-
-        for entry in fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
-            let obj_dir = entry.path();
-            if !obj_dir.is_dir() { continue; }
-
-            let manager_bsl = obj_dir.join("Ext").join("ManagerModule.bsl");
-            if !manager_bsl.exists() { continue; }
-
-            let obj_name = obj_dir.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("")
-                .to_string();
-
-            let bsl_content = fs::read_to_string(&manager_bsl).map_err(|e| e.to_string())?;
-            let bs_module = crate::module_parser::parse_bsl_module(
-                &bsl_content, "ManagerModule", &obj_name,
-            );
-
-            if let Some(obj) = objects.iter_mut().find(|o| o.name == obj_name) {
-                obj.modules.push(bs_module);
-            }
-        }
-    }
-
     Ok(())
 }
 
@@ -563,84 +446,6 @@ pub fn get_object(query: &str, show_attributes: bool, show_tabular: bool) -> Res
 
     if let Some(cev) = &obj.characteristic_ext_values {
         result["characteristic_ext_values"] = serde_json::json!(cev);
-    }
-
-    if !obj.modules.is_empty() {
-        let modules_json: Vec<serde_json::Value> = obj.modules.iter().map(|m| {
-            let mut module_map = serde_json::Map::new();
-            module_map.insert("module_type".into(), serde_json::json!(m.module_type));
-            module_map.insert("module_name".into(), serde_json::json!(m.module_name));
-
-            if let Some(ctx) = &m.context {
-                let mut ctx_map = serde_json::Map::new();
-                if ctx.server { ctx_map.insert("server".into(), serde_json::json!(true)); }
-                if ctx.server_call { ctx_map.insert("server_call".into(), serde_json::json!(true)); }
-                if ctx.client_managed_app { ctx_map.insert("client".into(), serde_json::json!(true)); }
-                if ctx.global { ctx_map.insert("global".into(), serde_json::json!(true)); }
-                if ctx.privileged { ctx_map.insert("privileged".into(), serde_json::json!(true)); }
-                if !ctx_map.is_empty() {
-                    module_map.insert("context".into(), serde_json::Value::Object(ctx_map));
-                }
-            }
-
-            if !m.methods.is_empty() {
-                let methods_json: Vec<serde_json::Value> = m.methods.iter().map(|method| {
-                    let mut method_map = serde_json::Map::new();
-                    method_map.insert("name".into(), serde_json::json!(method.name));
-                    method_map.insert("kind".into(), serde_json::json!(
-                        if method.is_function { "Function" } else { "Procedure" }
-                    ));
-                    if method.is_export {
-                        method_map.insert("export".into(), serde_json::json!(true));
-                    }
-                    if let Some(dir) = &method.context_directive {
-                        method_map.insert("context".into(), serde_json::json!(dir));
-                    }
-                    if let Some(desc) = &method.description {
-                        method_map.insert("description".into(), serde_json::json!(desc));
-                    }
-                    if !method.params.is_empty() {
-                        let params_json: Vec<serde_json::Value> = method.params.iter().map(|p| {
-                            let mut p_map = serde_json::Map::new();
-                            p_map.insert("name".into(), serde_json::json!(p.name));
-                            if let Some(ptype) = &p.param_type {
-                                p_map.insert("type".into(), serde_json::json!(ptype));
-                            }
-                            if let Some(default) = &p.default_value {
-                                p_map.insert("default".into(), serde_json::json!(default));
-                            }
-                            if let Some(desc) = &p.description {
-                                p_map.insert("description".into(), serde_json::json!(desc));
-                            }
-                            serde_json::Value::Object(p_map)
-                        }).collect();
-                        method_map.insert("params".into(), serde_json::Value::Array(params_json));
-                    }
-                    if let Some(ret) = &method.return_description {
-                        method_map.insert("returns".into(), serde_json::json!(ret));
-                    }
-                    serde_json::Value::Object(method_map)
-                }).collect();
-                module_map.insert("methods".into(), serde_json::Value::Array(methods_json));
-            }
-
-            serde_json::Value::Object(module_map)
-        }).collect();
-
-        if modules_json.len() == 1 {
-            let single = modules_json.into_iter().next().unwrap();
-            if let Some(ctx) = single.get("context") {
-                result["context"] = ctx.clone();
-            }
-            if let Some(methods) = single.get("methods") {
-                result["methods"] = methods.clone();
-            }
-            if let Some(mt) = single.get("module_type") {
-                result["module_type"] = mt.clone();
-            }
-        } else {
-            result["modules"] = serde_json::Value::Array(modules_json);
-        }
     }
 
     serde_json::to_string_pretty(&result).map_err(|e| e.to_string())

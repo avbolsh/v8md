@@ -19,9 +19,9 @@ export const V8MDPlugin: Plugin = async () => {
       }),
 
       "v8md-get": tool({
-        description: "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, CommonModule.РаботаСПочтой).",
+        description: "Получить метаданные объекта 1С. Формат: Тип.Имя (например: Document.Заказ, Catalog.Контрагенты).",
         args: z.object({
-          object: z.string().describe("Имя объекта, например: Catalog.Контрагенты, Document.Заказ, CommonModule.РаботаСПочтой"),
+          object: z.string().describe("Имя объекта, например: Catalog.Контрагенты, Document.Заказ"),
           attributes_only: z.boolean().optional().describe("Показать только атрибуты"),
           tabular_only: z.boolean().optional().describe("Показать только табличные части"),
         }),
@@ -50,7 +50,7 @@ export const V8MDPlugin: Plugin = async () => {
       "v8md-list": tool({
         description: "Список всех объектов 1С в кэше. Можно указать фильтр по типу.",
         args: z.object({
-          kind: z.string().optional().describe("Фильтр по типу: Catalog, Document, CommonModule и т.д."),
+          kind: z.string().optional().describe("Фильтр по типу: Catalog, Document, InformationRegister и т.д."),
         }),
         async execute({ kind }, { directory }) {
           const v8mdExe = path.join(directory, "bin", "v8md.exe")
